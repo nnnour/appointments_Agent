@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createServer } from 'http';
+import express from 'express';
 import { z } from 'zod';
 import pg from 'pg';
 import dotenv from 'dotenv';
@@ -236,9 +236,8 @@ server.tool(
   }
 );
 
-// Start the MCP server on port 3001
-// (webhook runs on 3000, MCP runs on 3001)
-async function main() {
+// Export the setup function to be called from the main Express app
+export async function setupMCP(app: express.Express) {
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
   });
@@ -247,15 +246,11 @@ async function main() {
     console.log('Transport closed');
   };
 
-  const httpServer = createServer(async (req, res) => {
+  // Mount MCP on /mcp path of the main Express app
+  app.all('/mcp', async (req, res) => {
     await transport.handleRequest(req, res);
   });
 
   await server.connect(transport);
-
-  httpServer.listen(3001, () => {
-    console.log('🚀 MCP Server running on port 3001');
-  });
+  console.log('🔧 MCP server mounted on /mcp');
 }
-
-main().catch(console.error);

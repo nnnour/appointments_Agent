@@ -1,6 +1,7 @@
 import express from 'express';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { setupMCP } from './mcp.js';
 
 dotenv.config();
 
@@ -35,7 +36,6 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
           last_procedure: patient.last_procedure || 'None',
           is_returning: 'true',
           date_of_birth: patient.date_of_birth || 'None',
-
         },
       });
     } else {
@@ -60,6 +60,9 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
     });
   }
 });
+
+// Mount MCP on the same Express app
+await setupMCP(app);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
