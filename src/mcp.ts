@@ -240,8 +240,12 @@ server.tool(
 // (webhook runs on 3000, MCP runs on 3001)
 async function main() {
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => crypto.randomUUID(),
   });
+
+  transport.onclose = () => {
+    console.log('Transport closed');
+  };
 
   const httpServer = createServer(async (req, res) => {
     await transport.handleRequest(req, res);

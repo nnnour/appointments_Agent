@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS patients (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   phone         VARCHAR(20) UNIQUE NOT NULL,
   name          VARCHAR(100) NOT NULL,
-  last_procedure VARCHAR(100)  -- e.g. "Knee MRI" - used to personalize greeting
+  last_procedure VARCHAR(100),       -- e.g. "Knee X-ray" - used to personalize greeting
+  date_of_birth  DATE                -- collected during booking for patient records
 );
 
 -- Stores each booked appointment
