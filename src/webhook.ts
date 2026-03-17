@@ -34,6 +34,8 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
           patient_name: patient.name,
           last_procedure: patient.last_procedure || 'None',
           is_returning: 'true',
+          date_of_birth: patient.date_of_birth || 'None',
+
         },
       });
     } else {
