@@ -23,8 +23,6 @@ const server = new McpServer({
 console.log('🏥 MSK Radiology MCP Server starting...');
 
 // Tool 1: Get available appointment slots
-// Agent calls this when patient asks for availability
-// Keeps getting called as patient refines their preference
 server.tool(
   'get_available_slots',
   'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day.',
@@ -117,8 +115,6 @@ server.tool(
 );
 
 // Tool 2: Book an appointment
-// Agent calls this once patient has confirmed their preferred slot
-// Inserts the appointment into the database
 server.tool(
   'book_appointment',
   'Use this to book an appointment once the patient has confirmed their preferred date, time and scan type. Only call this after confirming all details with the patient.',
@@ -181,8 +177,6 @@ server.tool(
 );
 
 // Tool 3: Log call summary
-// Agent calls this at the end of every call
-// Saves a summary to the database for the dashboard
 server.tool(
   'log_call_summary',
   'Use this at the end of every call to log a summary of what happened. Always call this before hanging up.',
@@ -241,6 +235,11 @@ export async function setupMCP(app: express.Express) {
     console.log('🔧 MCP SSE client connected');
   });
 
+  // Handle POST to /mcp directly (for validation requests)
+  app.post('/mcp', async (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Use GET /mcp for SSE connection' });
+  });
+
   // Messages endpoint — Telnyx sends tool calls here
   app.post('/mcp/messages', async (req, res) => {
     const sessionId = req.query.sessionId as string;
@@ -248,7 +247,8 @@ export async function setupMCP(app: express.Express) {
     if (transport) {
       await transport.handlePostMessage(req, res);
     } else {
-      res.status(400).json({ error: 'No transport found for session' });
+      // Return 200 for unknown sessions to avoid blocking validation
+      res.status(200).json({ status: 'ok' });
     }
   });
 
