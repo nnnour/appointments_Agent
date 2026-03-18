@@ -1,5 +1,4 @@
 import express from 'express';
-import { z } from 'zod';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
@@ -98,8 +97,17 @@ async function handleBookAppointment(args: any) {
 
     return { content: [{ type: 'text', text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${start_time}.${email ? ` Confirmation will be sent to ${email}.` : ''}` }] };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('book_appointment error:', error);
+    // Slot was taken by someone else simultaneously
+    if (error.code === '23505') {
+      return {
+        content: [{
+          type: 'text',
+          text: 'BOOKING_ERROR_SLOT_TAKEN: That slot was just booked by someone else. Call get_available_slots again to find another available time for the patient.'
+        }]
+      };
+    }
     return { content: [{ type: 'text', text: 'BOOKING_ERROR' }] };
   }
 }
