@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { z } from 'zod';
 import pg from 'pg';
@@ -35,8 +35,6 @@ server.tool(
   },
   async ({ modality, date, time_preference }) => {
     try {
-      // Normalize date to YYYY-MM-DD
-      // Handles "next Monday", "April 2nd", "tomorrow" etc
       const normalizeDate = (input: string): string => {
         const d = new Date(input);
         if (isNaN(d.getTime())) {
@@ -49,7 +47,6 @@ server.tool(
 
       const normalizedDate = normalizeDate(date);
 
-      // Generate all 30-minute slots between 9am and 5pm
       const allSlots = [];
       for (let hour = 9; hour < 17; hour++) {
         for (let min of [0, 30]) {
@@ -58,7 +55,6 @@ server.tool(
         }
       }
 
-      // Find already booked slots for this modality on this date
       const result = await pool.query(
         `SELECT start_time FROM appointments 
          WHERE modality = $1 
@@ -70,12 +66,10 @@ server.tool(
         new Date(r.start_time).toISOString()
       );
 
-      // Filter out booked slots
       let available = allSlots.filter(slot =>
         !bookedTimes.includes(new Date(slot).toISOString())
       );
 
-      // Filter by time preference
       available = available.filter(slot => {
         const hour = new Date(slot).getHours();
         if (time_preference === 'morning') return hour < 12;
@@ -83,7 +77,6 @@ server.tool(
         return true;
       });
 
-      // Return next 5 available
       available = available.slice(0, 5);
 
       if (available.length === 0) {
@@ -95,7 +88,6 @@ server.tool(
         };
       }
 
-      // Format nicely for voice
       const formatted = available.map(slot => {
         const d = new Date(slot);
         return d.toLocaleTimeString('en-US', {
@@ -142,7 +134,6 @@ server.tool(
   },
   async ({ phone, name, modality, body_part, start_time, email, referral, date_of_birth }) => {
     try {
-      // Find or create patient
       let patientResult = await pool.query(
         'SELECT * FROM patients WHERE phone = $1',
         [phone]
@@ -151,21 +142,18 @@ server.tool(
       let patient = patientResult.rows[0];
 
       if (!patient) {
-        // New patient — create them
         const newPatient = await pool.query(
           'INSERT INTO patients (phone, name, last_procedure, date_of_birth) VALUES ($1, $2, $3, $4) RETURNING *',
           [phone, name, `${body_part} ${modality}`, date_of_birth || null]
         );
         patient = newPatient.rows[0];
       } else {
-        // Returning patient — update their info
         await pool.query(
           'UPDATE patients SET last_procedure = $1, name = $2 WHERE phone = $3',
           [`${body_part} ${modality}`, name, phone]
         );
       }
 
-      // Book the appointment
       await pool.query(
         `INSERT INTO appointments 
          (patient_id, modality, body_part, start_time, email, referral) 
@@ -238,19 +226,31 @@ server.tool(
 
 // Export the setup function to be called from the main Express app
 export async function setupMCP(app: express.Express) {
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+  const transports: Record<string, SSEServerTransport> = {};
+
+  // SSE endpoint — Telnyx connects here first
+  app.get('/mcp', async (req, res) => {
+    const transport = new SSEServerTransport('/mcp/messages', res);
+    transports[transport.sessionId] = transport;
+
+    res.on('close', () => {
+      delete transports[transport.sessionId];
+    });
+
+    await server.connect(transport);
+    console.log('🔧 MCP SSE client connected');
   });
 
-  transport.onclose = () => {
-    console.log('Transport closed');
-  };
-
-  // Mount MCP on /mcp path of the main Express app
-  app.all('/mcp', async (req, res) => {
-    await transport.handleRequest(req, res);
+  // Messages endpoint — Telnyx sends tool calls here
+  app.post('/mcp/messages', async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    const transport = transports[sessionId];
+    if (transport) {
+      await transport.handlePostMessage(req, res);
+    } else {
+      res.status(400).json({ error: 'No transport found for session' });
+    }
   });
 
-  await server.connect(transport);
-  console.log('🔧 MCP server mounted on /mcp');
+  console.log('🔧 MCP SSE server ready on /mcp');
 }
