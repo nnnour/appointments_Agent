@@ -36,6 +36,7 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
           last_procedure: patient.last_procedure || 'None',
           is_returning: 'true',
           date_of_birth: patient.date_of_birth || 'None',
+          insurance: patient.insurance || 'None',
         },
       });
     } else {
@@ -43,9 +44,10 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
       console.log('🆕 New patient');
       return res.json({
         dynamic_variables: {
-          patient_name: 'there',
+          patient_name: 'Unknown',
           last_procedure: 'None',
           is_returning: 'false',
+          insurance: 'None',
         },
       });
     }
@@ -53,9 +55,10 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
     console.error('Webhook error:', error);
     return res.json({
       dynamic_variables: {
-        patient_name: 'there',
+        patient_name: 'Unknown',
         last_procedure: 'None',
         is_returning: 'false',
+        insurance: 'None',
       },
     });
   }

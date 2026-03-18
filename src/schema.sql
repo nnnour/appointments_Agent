@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS patients (
   phone         VARCHAR(20) UNIQUE NOT NULL,
   name          VARCHAR(100) NOT NULL,
   last_procedure VARCHAR(100),       -- e.g. "Knee X-ray" - used to personalize greeting
-  date_of_birth  DATE                -- collected during booking for patient records
+  date_of_birth  DATE,               -- collected during booking for patient records
+  insurance      VARCHAR(100)        -- patient insurance provider, nullable
 );
 
 -- Stores each booked appointment

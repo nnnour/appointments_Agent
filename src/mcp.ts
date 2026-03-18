@@ -72,21 +72,23 @@ async function handleGetAvailableSlots(args: any) {
 
 async function handleBookAppointment(args: any) {
   try {
-    const { phone, name, modality, body_part, start_time, email, referral, date_of_birth } = args;
+    const { phone, name, modality, body_part, start_time, email, referral, date_of_birth, insurance } = args;
 
     let patientResult = await pool.query('SELECT * FROM patients WHERE phone = $1', [phone]);
     let patient = patientResult.rows[0];
 
     if (!patient) {
+      // New patient — create them
       const newPatient = await pool.query(
-        'INSERT INTO patients (phone, name, last_procedure, date_of_birth) VALUES ($1, $2, $3, $4) RETURNING *',
-        [phone, name, `${body_part} ${modality}`, date_of_birth || null]
+        'INSERT INTO patients (phone, name, last_procedure, date_of_birth, insurance) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [phone, name, `${body_part} ${modality}`, date_of_birth || null, insurance || null]
       );
       patient = newPatient.rows[0];
     } else {
+      // Returning patient — update their info
       await pool.query(
-        'UPDATE patients SET last_procedure = $1, name = $2 WHERE phone = $3',
-        [`${body_part} ${modality}`, name, phone]
+        'UPDATE patients SET last_procedure = $1, name = $2, insurance = $3 WHERE phone = $4',
+        [`${body_part} ${modality}`, name, insurance || patient.insurance, phone]
       );
     }
 
@@ -99,7 +101,6 @@ async function handleBookAppointment(args: any) {
 
   } catch (error: any) {
     console.error('book_appointment error:', error);
-    // Slot was taken by someone else simultaneously
     if (error.code === '23505') {
       return {
         content: [{
@@ -140,7 +141,6 @@ export async function setupMCP(app: express.Express) {
 
     console.log(`MCP request: ${method}`);
 
-    // Handle initialize
     if (method === 'initialize') {
       return res.json({
         jsonrpc: '2.0', id,
@@ -152,12 +152,10 @@ export async function setupMCP(app: express.Express) {
       });
     }
 
-    // Handle notifications (no response needed)
     if (method === 'notifications/initialized') {
       return res.status(200).end();
     }
 
-    // List all tools
     if (method === 'tools/list') {
       return res.json({
         jsonrpc: '2.0', id,
@@ -189,7 +187,8 @@ export async function setupMCP(app: express.Express) {
                   start_time: { type: 'string', description: 'Appointment start time e.g. 2026-03-18 14:00:00' },
                   email: { type: 'string', description: 'Optional patient email for confirmation' },
                   referral: { type: 'boolean', description: 'Whether patient has a referral' },
-                  date_of_birth: { type: 'string', description: 'Optional patient date of birth e.g. 2001-05-17' }
+                  date_of_birth: { type: 'string', description: 'Optional patient date of birth e.g. 2001-05-17' },
+                  insurance: { type: 'string', description: 'Optional patient insurance provider e.g. Kaiser, Blue Cross' }
                 },
                 required: ['phone', 'name', 'modality', 'body_part', 'start_time', 'referral']
               }
@@ -211,7 +210,6 @@ export async function setupMCP(app: express.Express) {
       });
     }
 
-    // Call a tool
     if (method === 'tools/call') {
       const { name, arguments: args } = params;
       let result;
@@ -224,7 +222,6 @@ export async function setupMCP(app: express.Express) {
       return res.json({ jsonrpc: '2.0', id, result });
     }
 
-    // Default response
     return res.json({ jsonrpc: '2.0', id, result: {} });
   });
 
