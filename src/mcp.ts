@@ -13,21 +13,62 @@ const pool = new Pool({
 
 console.log('🏥 MSK Radiology MCP Server starting...');
 
+// Normalize natural language dates to YYYY-MM-DD using Pacific timezone + 14 day map
+const normalizeDate = (input: string): string => {
+  // Get today in Pacific time
+  const nowPacific = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+  const today = new Date(nowPacific);
+  today.setHours(0, 0, 0, 0);
+
+  // Pre-compute next 14 days in Pacific time
+  const next14Days: { date: Date; dayName: string; index: number }[] = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Los_Angeles' }).toLowerCase();
+    next14Days.push({ date: d, dayName, index: i });
+  }
+
+  const lower = input.toLowerCase().trim();
+
+  // "today"
+  if (lower === 'today') return next14Days[0].date.toISOString().split('T')[0];
+
+  // "tomorrow"
+  if (lower === 'tomorrow') return next14Days[1].date.toISOString().split('T')[0];
+
+  // "next week"
+  if (lower === 'next week') return next14Days[7].date.toISOString().split('T')[0];
+
+  // "next Monday", "next Tuesday" etc — find SECOND occurrence in 14 days
+  const nextDayMatch = lower.match(/next (monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
+  if (nextDayMatch) {
+    const targetDay = nextDayMatch[1];
+    const occurrences = next14Days.filter(d => d.dayName === targetDay && d.index > 0);
+    if (occurrences.length >= 2) return occurrences[1].date.toISOString().split('T')[0];
+    if (occurrences.length === 1) return occurrences[0].date.toISOString().split('T')[0];
+  }
+
+  // "this Monday", "Monday", "Wednesday" etc — find FIRST occurrence in 14 days
+  const dayMatch = lower.match(/(?:this )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
+  if (dayMatch) {
+    const targetDay = dayMatch[1];
+    const occurrence = next14Days.find(d => d.dayName === targetDay && d.index > 0);
+    if (occurrence) return occurrence.date.toISOString().split('T')[0];
+  }
+
+  // Specific date like "2026-03-25" or "March 25" — parse directly
+  const parsed = new Date(input);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+
+  // Fallback to tomorrow
+  return next14Days[1].date.toISOString().split('T')[0];
+};
+
 // Tool handlers — actual logic lives here
 async function handleGetAvailableSlots(args: any) {
   try {
     const { modality, date, time_preference = 'any' } = args;
-
-    const normalizeDate = (input: string): string => {
-      const d = new Date(input);
-      if (isNaN(d.getTime())) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split('T')[0];
-      }
-      return d.toISOString().split('T')[0];
-    };
-
     const normalizedDate = normalizeDate(date);
 
     const allSlots = [];
@@ -60,7 +101,11 @@ async function handleGetAvailableSlots(args: any) {
       return { content: [{ type: 'text', text: `NO_SLOTS_AVAILABLE for ${modality} on ${normalizedDate} (${time_preference}). Ask the patient for another date or time preference.` }] };
     }
 
-    const formatted = available.map(slot => new Date(slot).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
+    // Return both human readable time AND full datetime so agent can pass correct start_time to book_appointment
+    const formatted = available.map(slot => {
+      const readable = new Date(slot).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${readable} (${slot})`;
+    });
 
     return { content: [{ type: 'text', text: `Available ${modality} slots on ${normalizedDate}${time_preference !== 'any' ? ` (${time_preference})` : ''}: ${formatted.join(', ')}` }] };
 
@@ -78,14 +123,12 @@ async function handleBookAppointment(args: any) {
     let patient = patientResult.rows[0];
 
     if (!patient) {
-      // New patient — create them
       const newPatient = await pool.query(
         'INSERT INTO patients (phone, name, last_procedure, date_of_birth, insurance) VALUES ($1, $2, $3, $4, $5) RETURNING *',
         [phone, name, `${body_part} ${modality}`, date_of_birth || null, insurance || null]
       );
       patient = newPatient.rows[0];
     } else {
-      // Returning patient — update their info
       await pool.query(
         'UPDATE patients SET last_procedure = $1, name = $2, insurance = $3 WHERE phone = $4',
         [`${body_part} ${modality}`, name, insurance || patient.insurance, phone]
@@ -163,12 +206,12 @@ export async function setupMCP(app: express.Express) {
           tools: [
             {
               name: 'get_available_slots',
-              description: 'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day.',
+              description: 'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day. Each slot is returned with both a human readable time and the exact datetime in parentheses — always use the exact datetime in parentheses when calling book_appointment.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   modality: { type: 'string', enum: ['X-ray', 'MRI', 'Ultrasound'] },
-                  date: { type: 'string', description: 'Date in YYYY-MM-DD format or natural language like "tomorrow", "next Monday"' },
+                  date: { type: 'string', description: 'Date in YYYY-MM-DD format or natural language like "tomorrow", "next Monday", "Wednesday"' },
                   time_preference: { type: 'string', enum: ['morning', 'afternoon', 'any'], default: 'any' }
                 },
                 required: ['modality', 'date']
@@ -176,7 +219,7 @@ export async function setupMCP(app: express.Express) {
             },
             {
               name: 'book_appointment',
-              description: 'Use this to book an appointment once the patient has confirmed their preferred date, time and scan type. Only call this after confirming all details with the patient.',
+              description: 'Use this to book an appointment once the patient has confirmed their preferred date, time and scan type. Only call this after confirming all details with the patient. Use the exact datetime from get_available_slots response for start_time.',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -184,7 +227,7 @@ export async function setupMCP(app: express.Express) {
                   name: { type: 'string', description: 'Patient full name' },
                   modality: { type: 'string', enum: ['X-ray', 'MRI', 'Ultrasound'] },
                   body_part: { type: 'string', description: 'Body part e.g. Knee, Shoulder, Spine' },
-                  start_time: { type: 'string', description: 'Appointment start time e.g. 2026-03-18 14:00:00' },
+                  start_time: { type: 'string', description: 'Exact appointment start time from get_available_slots e.g. 2026-03-18 14:00:00' },
                   email: { type: 'string', description: 'Optional patient email for confirmation' },
                   referral: { type: 'boolean', description: 'Whether patient has a referral' },
                   date_of_birth: { type: 'string', description: 'Optional patient date of birth e.g. 2001-05-17' },
