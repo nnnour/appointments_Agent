@@ -289,6 +289,32 @@
     return '';
   }
 
+  function parseWallTimeParts(timestamp) {
+    const match = String(timestamp).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!match) return null;
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+      hour: Number(match[4]),
+      minute: Number(match[5])
+    };
+  }
+
+  function formatWallClockPacific(timestamp) {
+    const parts = parseWallTimeParts(timestamp);
+    if (!parts) return 'Invalid time';
+
+    const dateRef = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+    const dateStr = dateRef.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const hour12 = ((parts.hour + 11) % 12) + 1;
+    const minute = String(parts.minute).padStart(2, '0');
+    const ampm = parts.hour >= 12 ? 'PM' : 'AM';
+    const timeStr = `${hour12}:${minute} ${ampm}`;
+
+    return `${dateStr} ${timeStr}`;
+  }
+
   function renderDateTabs(days) {
     document.getElementById('dateTabs').innerHTML = days.map(d => `
       <div class="date-tab ${d === selectedDate ? 'active' : ''}" onclick="selectDate('${d}')">
@@ -371,9 +397,7 @@
 
     container.innerHTML = recent.map(a => {
       const cls = getModalityClass(a.modality);
-      const dt = new Date(a.start_time);
-      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
-      const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+      const bookingDateTime = formatWallClockPacific(a.start_time);
       return `
         <div class="recent-item">
           <div class="recent-item-top">
@@ -381,7 +405,7 @@
             <div class="recent-badge ${cls}">${a.modality}</div>
           </div>
           <div class="recent-details">
-            <span>${a.body_part} · ${dateStr} ${timeStr}</span>
+            <span>${a.body_part} · ${bookingDateTime}</span>
             <span>${a.phone}</span>
           </div>
         </div>`;
