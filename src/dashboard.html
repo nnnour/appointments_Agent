@@ -23,12 +23,27 @@
       --slot-h: 52px;
     }
 
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    html, body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      width: 100%;
+    }
 
     header {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 32px; display: flex; align-items: center;
-      justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      width: 100%;
     }
 
     .logo { display: flex; align-items: center; gap: 10px; }
@@ -36,18 +51,25 @@
       width: 36px; height: 36px; background: var(--text); border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
-      color: white; letter-spacing: -0.5px;
+      color: white; letter-spacing: -0.5px; flex-shrink: 0;
     }
     .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
     .logo-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.5px; text-transform: uppercase; }
 
-    .header-right { display: flex; align-items: center; gap: 20px; }
+    .header-right { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
     .live-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
     .live-dot { width: 7px; height: 7px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
     .date-display { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+      width: 100%;
+    }
     .stat-card { background: var(--surface); padding: 20px 28px; display: flex; flex-direction: column; gap: 4px; }
     .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-family: 'DM Mono', monospace; }
     .stat-value { font-size: 28px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
@@ -56,42 +78,68 @@
     .stat-value.mri { color: var(--mri); }
     .stat-value.ultrasound { color: var(--ultrasound); }
 
-    .main { display: grid; grid-template-columns: 1fr 340px; min-height: calc(100vh - 64px - 81px); max-width: 100vw; }
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      width: 100%;
+      overflow: hidden;
+    }
 
-    .calendar-section { padding: 28px 32px; border-right: 1px solid var(--border); }
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .calendar-section {
+      padding: 28px 32px;
+      border-right: 1px solid var(--border);
+      min-width: 0; /* critical — prevents grid blowout */
+      overflow: hidden;
+    }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
     .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; font-family: 'DM Mono', monospace; color: var(--muted); }
 
-    .legend { display: flex; gap: 16px; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; }
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-    .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
-    .date-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+    .date-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .date-tabs::-webkit-scrollbar { display: none; }
+
     .date-tab {
       padding: 6px 14px; border-radius: 20px; font-size: 12px;
       font-family: 'DM Mono', monospace; cursor: pointer;
       border: 1px solid var(--border); background: var(--surface);
       color: var(--muted); white-space: nowrap; transition: all 0.15s;
+      flex-shrink: 0;
     }
     .date-tab:hover { border-color: var(--text); color: var(--text); }
     .date-tab.active { background: var(--text); color: white; border-color: var(--text); }
 
     .calendar-grid {
-      display: grid; grid-template-columns: 64px repeat(3, 1fr);
-      border: 1px solid var(--border); border-radius: 12px;
-      overflow: hidden; background: var(--border); gap: 1px;
+      display: grid;
+      grid-template-columns: 64px repeat(3, 1fr);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--border);
+      gap: 1px;
+      width: 100%;
     }
 
-    .col-header { background: var(--surface); padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; }
+    .col-header { background: var(--surface); padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; min-width: 0; }
     .col-header.time-header { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; }
     .col-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
     .time-cell { background: var(--surface); height: var(--slot-h); display: flex; align-items: center; padding: 0 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
-    .slot-cell { background: var(--surface); height: var(--slot-h); padding: 4px 6px; }
+    .slot-cell { background: var(--surface); height: var(--slot-h); padding: 4px 6px; min-width: 0; }
     .slot-empty { width: 100%; height: 100%; border-radius: 6px; border: 1.5px dashed var(--border); display: flex; align-items: center; justify-content: center; }
     .slot-empty-text { font-size: 10px; color: #d1cfc8; font-family: 'DM Mono', monospace; }
 
-    .slot-booked { width: 100%; height: 100%; border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; gap: 1px; animation: fadeIn 0.4s ease; }
+    .slot-booked { width: 100%; height: 100%; border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; gap: 1px; animation: fadeIn 0.4s ease; min-width: 0; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     .slot-booked.xray { background: var(--xray-light); border-left: 3px solid var(--xray); }
@@ -104,13 +152,13 @@
     .slot-name.ultrasound { color: var(--ultrasound); }
     .slot-body { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Mono', monospace; }
 
-    .sidebar { padding: 28px 24px; overflow-y: auto; }
+    .sidebar { padding: 28px 24px; overflow-y: auto; min-width: 0; }
     .recent-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 
     .recent-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; animation: fadeIn 0.4s ease; }
-    .recent-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .recent-name { font-size: 13px; font-weight: 600; }
-    .recent-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: 'DM Mono', monospace; font-weight: 500; }
+    .recent-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+    .recent-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: 'DM Mono', monospace; font-weight: 500; flex-shrink: 0; }
     .recent-badge.xray { background: var(--xray-light); color: var(--xray); }
     .recent-badge.mri { background: var(--mri-light); color: var(--mri); }
     .recent-badge.ultrasound { background: var(--ultrasound-light); color: var(--ultrasound); }
@@ -212,14 +260,12 @@
 
   function getAllDates() {
     const days = new Set();
-    // Add next 14 days
     const today = new Date();
     for (let i = 0; i < 14; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
       days.add(d.toISOString().split('T')[0]);
     }
-    // Add any dates that have actual bookings (even beyond 14 days)
     allAppointments.forEach(a => {
       days.add(a.start_time.split('T')[0]);
     });
@@ -313,7 +359,6 @@
   }
 
   function renderRecent() {
-    // Sort by most recently created, show top 10
     const recent = [...allAppointments]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 10);
@@ -356,12 +401,10 @@
     }
   }
 
-  // Init — default to today
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   selectedDate = todayStr;
   fetchData();
 
-  // Auto refresh every 15 seconds
   setInterval(fetchData, 15000);
 </script>
 </body>
