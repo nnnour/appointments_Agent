@@ -619,12 +619,12 @@
 
   function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
-    const dayAppts = allAppointments.filter(a => a.start_time.startsWith(selectedDate));
+    const dayAppts = allAppointments.filter(a => a.start_time.split('T')[0] === selectedDate);
 
     // Build lookup: modality -> time -> appointment
     const lookup = {};
     dayAppts.forEach(a => {
-      const time = a.start_time.split(' ')[1];
+      const time = a.start_time.split('T')[1].substring(0, 8);
       if (!lookup[a.modality]) lookup[a.modality] = {};
       lookup[a.modality][time] = a;
     });
