@@ -20,461 +20,120 @@
       --mri-light: #f5f3ff;
       --ultrasound: #059669;
       --ultrasound-light: #ecfdf5;
-      --accent: #e85d2f;
       --slot-h: 52px;
     }
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    /* HEADER */
     header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 32px; display: flex; align-items: center;
+      justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .logo { display: flex; align-items: center; gap: 10px; }
     .logo-mark {
-      width: 32px;
-      height: 32px;
-      background: var(--text);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 36px; height: 36px; background: var(--text); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+      color: white; letter-spacing: -0.5px;
     }
+    .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.5px; text-transform: uppercase; }
 
-    .logo-mark svg { width: 18px; height: 18px; fill: white; }
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+    .live-dot { width: 7px; height: 7px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+    .date-display { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
 
-    .logo-text {
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.3px;
-    }
-
-    .logo-sub {
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-    }
-
-    .live-dot {
-      width: 7px;
-      height: 7px;
-      background: #22c55e;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.8); }
-    }
-
-    .date-display {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    /* STATS ROW */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .stat-card {
-      background: var(--surface);
-      padding: 20px 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-    }
-
-    .stat-value {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -1px;
-      line-height: 1;
-    }
-
-    .stat-sub {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+    .stat-card { background: var(--surface); padding: 20px 28px; display: flex; flex-direction: column; gap: 4px; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-family: 'DM Mono', monospace; }
+    .stat-value { font-size: 28px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
     .stat-value.xray { color: var(--xray); }
     .stat-value.mri { color: var(--mri); }
     .stat-value.ultrasound { color: var(--ultrasound); }
 
-    /* MAIN LAYOUT */
-    .main {
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 0;
-      min-height: calc(100vh - 64px - 81px);
-    }
+    .main { display: grid; grid-template-columns: 1fr 320px; min-height: calc(100vh - 64px - 81px); }
 
-    /* CALENDAR */
-    .calendar-section {
-      padding: 28px 32px;
-      border-right: 1px solid var(--border);
-    }
+    .calendar-section { padding: 28px 32px; border-right: 1px solid var(--border); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; font-family: 'DM Mono', monospace; color: var(--muted); }
 
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
+    .legend { display: flex; gap: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
 
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      font-family: 'DM Mono', monospace;
-      color: var(--muted);
-    }
-
-    .legend {
-      display: flex;
-      gap: 16px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-    }
-
-    /* CALENDAR GRID */
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: 64px repeat(3, 1fr);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--border);
-      gap: 1px;
-    }
-
-    .col-header {
-      background: var(--surface);
-      padding: 14px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .col-header.time-header {
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-    }
-
-    .col-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-
-    .time-cell {
-      background: var(--surface);
-      height: var(--slot-h);
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .slot-cell {
-      background: var(--surface);
-      height: var(--slot-h);
-      padding: 4px 6px;
-      position: relative;
-    }
-
-    .slot-empty {
-      width: 100%;
-      height: 100%;
-      border-radius: 6px;
-      border: 1.5px dashed var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .slot-empty-text {
-      font-size: 10px;
-      color: #d1cfc8;
-      font-family: 'DM Mono', monospace;
-    }
-
-    .slot-booked {
-      width: 100%;
-      height: 100%;
-      border-radius: 6px;
-      padding: 6px 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 1px;
-      animation: fadeIn 0.4s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .slot-booked.xray {
-      background: var(--xray-light);
-      border-left: 3px solid var(--xray);
-    }
-
-    .slot-booked.mri {
-      background: var(--mri-light);
-      border-left: 3px solid var(--mri);
-    }
-
-    .slot-booked.ultrasound {
-      background: var(--ultrasound-light);
-      border-left: 3px solid var(--ultrasound);
-    }
-
-    .slot-name {
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .slot-name.xray { color: var(--xray); }
-    .slot-name.mri { color: var(--mri); }
-    .slot-name.ultrasound { color: var(--ultrasound); }
-
-    .slot-body {
-      font-size: 10px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-family: 'DM Mono', monospace;
-    }
-
-    /* DATE TABS */
-    .date-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
+    .date-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
     .date-tab {
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-family: 'DM Mono', monospace;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      white-space: nowrap;
-      transition: all 0.15s;
+      padding: 6px 14px; border-radius: 20px; font-size: 12px;
+      font-family: 'DM Mono', monospace; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); white-space: nowrap; transition: all 0.15s;
     }
-
     .date-tab:hover { border-color: var(--text); color: var(--text); }
     .date-tab.active { background: var(--text); color: white; border-color: var(--text); }
 
-    /* SIDEBAR */
-    .sidebar {
-      padding: 28px 24px;
+    .calendar-grid {
+      display: grid; grid-template-columns: 64px repeat(3, 1fr);
+      border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; background: var(--border); gap: 1px;
     }
 
-    .recent-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 16px;
-    }
+    .col-header { background: var(--surface); padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; }
+    .col-header.time-header { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; }
+    .col-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
-    .recent-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      animation: fadeIn 0.4s ease;
-    }
+    .time-cell { background: var(--surface); height: var(--slot-h); display: flex; align-items: center; padding: 0 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+    .slot-cell { background: var(--surface); height: var(--slot-h); padding: 4px 6px; }
+    .slot-empty { width: 100%; height: 100%; border-radius: 6px; border: 1.5px dashed var(--border); display: flex; align-items: center; justify-content: center; }
+    .slot-empty-text { font-size: 10px; color: #d1cfc8; font-family: 'DM Mono', monospace; }
 
-    .recent-item-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-    }
+    .slot-booked { width: 100%; height: 100%; border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; gap: 1px; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-    .recent-name {
-      font-size: 13px;
-      font-weight: 600;
-    }
+    .slot-booked.xray { background: var(--xray-light); border-left: 3px solid var(--xray); }
+    .slot-booked.mri { background: var(--mri-light); border-left: 3px solid var(--mri); }
+    .slot-booked.ultrasound { background: var(--ultrasound-light); border-left: 3px solid var(--ultrasound); }
 
-    .recent-badge {
-      font-size: 10px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-family: 'DM Mono', monospace;
-      font-weight: 500;
-    }
+    .slot-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot-name.xray { color: var(--xray); }
+    .slot-name.mri { color: var(--mri); }
+    .slot-name.ultrasound { color: var(--ultrasound); }
+    .slot-body { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Mono', monospace; }
 
+    .sidebar { padding: 28px 24px; overflow-y: auto; }
+    .recent-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+    .recent-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; animation: fadeIn 0.4s ease; }
+    .recent-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .recent-name { font-size: 13px; font-weight: 600; }
+    .recent-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: 'DM Mono', monospace; font-weight: 500; }
     .recent-badge.xray { background: var(--xray-light); color: var(--xray); }
     .recent-badge.mri { background: var(--mri-light); color: var(--mri); }
     .recent-badge.ultrasound { background: var(--ultrasound-light); color: var(--ultrasound); }
+    .recent-details { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; display: flex; flex-direction: column; gap: 2px; }
 
-    .recent-details {
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    /* CALL LOGS */
-    .call-logs {
-      margin-top: 28px;
-    }
-
-    .call-log-item {
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-    }
-
-    .call-log-time {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-      margin-bottom: 3px;
-    }
-
-    .call-log-summary {
-      color: var(--text);
-      line-height: 1.4;
-    }
-
-    /* LOADING */
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 200px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      gap: 8px;
-    }
-
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border);
-      border-top-color: var(--text);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; gap: 8px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty-state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100px;
-      color: var(--muted);
-      font-size: 12px;
-      font-family: 'DM Mono', monospace;
-    }
+    .empty-state { display: flex; align-items: center; justify-content: center; height: 100px; color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; }
   </style>
 </head>
 <body>
 
 <header>
   <div class="logo">
-    <div class="logo-mark" style="font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:white;letter-spacing:-0.5px;">XMU</div>
+    <div class="logo-mark">XMU</div>
     <div>
       <div class="logo-text">XMU Radiology</div>
       <div class="logo-sub">Appointment Dashboard</div>
     </div>
   </div>
   <div class="header-right">
-    <div class="live-badge">
-      <div class="live-dot"></div>
-      LIVE
-    </div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
     <div class="date-display" id="currentDateTime"></div>
   </div>
 </header>
@@ -505,25 +164,17 @@
 <div class="main">
   <div class="calendar-section">
     <div class="section-header">
-      <div class="section-title">Schedule</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="section-title">Schedule</div>
+        <button onclick="fetchData()" style="padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--text)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↻ refresh</button>
+      </div>
       <div class="legend">
-        <div class="legend-item">
-          <div class="legend-dot" style="background:var(--xray)"></div>
-          X-Ray
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background:var(--mri)"></div>
-          MRI
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background:var(--ultrasound)"></div>
-          Ultrasound
-        </div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--xray)"></div>X-Ray</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mri)"></div>MRI</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--ultrasound)"></div>Ultrasound</div>
       </div>
     </div>
-
     <div class="date-tabs" id="dateTabs"></div>
-
     <div class="calendar-grid" id="calendarGrid">
       <div class="loading"><div class="spinner"></div> Loading schedule...</div>
     </div>
@@ -534,20 +185,10 @@
     <div class="recent-list" id="recentList">
       <div class="loading"><div class="spinner"></div></div>
     </div>
-
-    <div class="call-logs">
-      <div class="section-title" style="margin-bottom:12px">Call Logs</div>
-      <div id="callLogsList">
-        <div class="loading"><div class="spinner"></div></div>
-      </div>
-    </div>
   </div>
 </div>
 
 <script>
-  const API = '';  // same origin
-
-  // Time slots 9am - 5pm
   const TIME_SLOTS = [];
   for (let h = 9; h < 17; h++) {
     for (let m of [0, 30]) {
@@ -559,29 +200,30 @@
 
   let selectedDate = '';
   let allAppointments = [];
-  let allCallLogs = [];
 
-  // Update clock
   function updateClock() {
     const now = new Date();
     document.getElementById('currentDateTime').textContent =
       now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-      ' · ' +
-      now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      ' · ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Get next 7 days
-  function getNext7Days() {
-    const days = [];
+  function getAllDates() {
+    const days = new Set();
+    // Add next 14 days
     const today = new Date();
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 14; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
-      days.push(d.toISOString().split('T')[0]);
+      days.add(d.toISOString().split('T')[0]);
     }
-    return days;
+    // Add any dates that have actual bookings (even beyond 14 days)
+    allAppointments.forEach(a => {
+      days.add(a.start_time.split('T')[0]);
+    });
+    return [...days].sort();
   }
 
   function formatDateTab(dateStr) {
@@ -602,10 +244,8 @@
   }
 
   function renderDateTabs(days) {
-    const container = document.getElementById('dateTabs');
-    container.innerHTML = days.map(d => `
-      <div class="date-tab ${d === selectedDate ? 'active' : ''}"
-           onclick="selectDate('${d}')">
+    document.getElementById('dateTabs').innerHTML = days.map(d => `
+      <div class="date-tab ${d === selectedDate ? 'active' : ''}" onclick="selectDate('${d}')">
         ${formatDateTab(d)}
       </div>
     `).join('');
@@ -613,7 +253,7 @@
 
   function selectDate(date) {
     selectedDate = date;
-    renderDateTabs(getNext7Days());
+    renderDateTabs(getAllDates());
     renderCalendar();
   }
 
@@ -621,7 +261,6 @@
     const grid = document.getElementById('calendarGrid');
     const dayAppts = allAppointments.filter(a => a.start_time.split('T')[0] === selectedDate);
 
-    // Build lookup: modality -> time -> appointment
     const lookup = {};
     dayAppts.forEach(a => {
       const time = a.start_time.split('T')[1].substring(0, 8);
@@ -647,20 +286,17 @@
         const appt = lookup[mod]?.[slot.value];
         const cls = getModalityClass(mod);
         if (appt) {
-          const firstName = appt.name.split(' ')[0];
           html += `
             <div class="slot-cell">
               <div class="slot-booked ${cls}">
-                <div class="slot-name ${cls}">${firstName}</div>
+                <div class="slot-name ${cls}">${appt.name}</div>
                 <div class="slot-body">${appt.body_part}</div>
               </div>
             </div>`;
         } else {
           html += `
             <div class="slot-cell">
-              <div class="slot-empty">
-                <span class="slot-empty-text">free</span>
-              </div>
+              <div class="slot-empty"><span class="slot-empty-text">free</span></div>
             </div>`;
         }
       });
@@ -677,9 +313,10 @@
   }
 
   function renderRecent() {
+    // Sort by most recently created, show top 10
     const recent = [...allAppointments]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 6);
+      .slice(0, 10);
 
     const container = document.getElementById('recentList');
     if (recent.length === 0) {
@@ -690,8 +327,8 @@
     container.innerHTML = recent.map(a => {
       const cls = getModalityClass(a.modality);
       const dt = new Date(a.start_time);
-      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+      const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
       return `
         <div class="recent-item">
           <div class="recent-item-top">
@@ -702,64 +339,30 @@
             <span>${a.body_part} · ${dateStr} ${timeStr}</span>
             <span>${a.phone}</span>
           </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function renderCallLogs() {
-    const container = document.getElementById('callLogsList');
-    const recent = [...allCallLogs]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 8);
-
-    if (recent.length === 0) {
-      container.innerHTML = '<div class="empty-state">no logs yet</div>';
-      return;
-    }
-
-    container.innerHTML = recent.map(log => {
-      const dt = new Date(log.created_at);
-      const timeStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-        ' · ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      return `
-        <div class="call-log-item">
-          <div class="call-log-time">${timeStr} · ${log.phone}</div>
-          <div class="call-log-summary">${log.summary}</div>
-        </div>
-      `;
+        </div>`;
     }).join('');
   }
 
   async function fetchData() {
     try {
-      const [apptRes, logsRes] = await Promise.all([
-        fetch('/api/appointments'),
-        fetch('/api/call-logs')
-      ]);
+      const apptRes = await fetch('/api/appointments');
       allAppointments = await apptRes.json();
-      allCallLogs = await logsRes.json();
-
       renderStats();
       renderRecent();
-      renderCallLogs();
+      renderDateTabs(getAllDates());
       renderCalendar();
     } catch (e) {
       console.error('Fetch error:', e);
     }
   }
 
-  // Init
-  const days = getNext7Days();
-  selectedDate = days[0];
-  renderDateTabs(days);
+  // Init — default to today
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  selectedDate = todayStr;
   fetchData();
 
   // Auto refresh every 15 seconds
-  setInterval(() => {
-    fetchData();
-    renderDateTabs(getNext7Days());
-  }, 15000);
+  setInterval(fetchData, 15000);
 </script>
 </body>
 </html>
