@@ -34,7 +34,7 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
         dynamic_variables: {
           patient_name: patient.name,
           last_procedure: patient.last_procedure || 'None',
-          is_returning: 'true',
+          is_returning: 'yes',
           date_of_birth: patient.date_of_birth || 'None',
           insurance: patient.insurance || 'None',
         },
@@ -46,7 +46,7 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
         dynamic_variables: {
           patient_name: 'Unknown',
           last_procedure: 'None',
-          is_returning: 'false',
+          is_returning: 'no',
           insurance: 'None',
         },
       });
@@ -57,7 +57,7 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
       dynamic_variables: {
         patient_name: 'Unknown',
         last_procedure: 'None',
-        is_returning: 'false',
+        is_returning: 'no',
         insurance: 'None',
       },
     });
