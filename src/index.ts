@@ -1,3 +1,3 @@
 import './webhook.js';
 
-console.log('🏥 MSK Radiology Assistant is running!');
+console.log('🏥 XMU Radiology Assistant is running!');

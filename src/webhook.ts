@@ -2,8 +2,13 @@ import express from 'express';
 import pg from 'pg';
 import dotenv from 'dotenv';
 import { setupMCP } from './mcp.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -64,11 +69,45 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
   }
 });
 
+// Serve dashboard
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Get all appointments
+app.get('/api/appointments', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT a.*, p.name, p.phone FROM appointments a 
+       JOIN patients p ON a.patient_id = p.id 
+       ORDER BY a.start_time DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('appointments error:', error);
+    res.status(500).json({ error: 'Failed to fetch appointments' });
+  }
+});
+
+// Get all call logs
+app.get('/api/call-logs', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM call_logs ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('call logs error:', error);
+    res.status(500).json({ error: 'Failed to fetch call logs' });
+  }
+});
+
 // Mount MCP on the same Express app
 await setupMCP(app);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
+  console.log(`🏥 XMU Radiology Assistant is running!`);
   console.log(`🚀 Server running on port ${PORT}`);
 });
 

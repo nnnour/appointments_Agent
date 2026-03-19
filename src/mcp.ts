@@ -10,7 +10,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-console.log('🏥 MSK Radiology MCP Server starting...');
+console.log('🏥 XMU Radiology MCP Server starting...');
 
 const normalizeDate = (input: string): string => {
   const now = new Date();
@@ -180,7 +180,7 @@ export async function setupMCP(app: express.Express) {
         result: {
           protocolVersion: '2024-11-05',
           capabilities: { tools: {} },
-          serverInfo: { name: 'msk-radiology', version: '1.0.0' }
+          serverInfo: { name: 'XMU-radiology', version: '1.0.0' }
         }
       });
     }

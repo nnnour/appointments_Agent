@@ -1,5 +1,5 @@
 {
-  "name": "msk-radiology",
+  "name": "xmu-radiology",
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
