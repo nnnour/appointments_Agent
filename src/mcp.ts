@@ -15,17 +15,25 @@ console.log('🏥 MSK Radiology MCP Server starting...');
 
 // Normalize natural language dates to YYYY-MM-DD using Pacific timezone + 14 day map
 const normalizeDate = (input: string): string => {
-  // Get today in Pacific time
-  const nowPacific = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
-  const today = new Date(nowPacific);
+  // Get today in Pacific time correctly without timezone drift
+  const now = new Date();
+  const pacificDateStr = now.toLocaleDateString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  // pacificDateStr is like "03/18/2026"
+  const [month, day, year] = pacificDateStr.split('/');
+  const today = new Date(Number(year), Number(month) - 1, Number(day));
   today.setHours(0, 0, 0, 0);
 
-  // Pre-compute next 14 days in Pacific time
+  // Pre-compute next 14 days
   const next14Days: { date: Date; dayName: string; index: number }[] = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Los_Angeles' }).toLowerCase();
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     next14Days.push({ date: d, dayName, index: i });
   }
 
