@@ -6,16 +6,13 @@ dotenv.config();
 
 const { Pool } = pg;
 
-// Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 console.log('🏥 MSK Radiology MCP Server starting...');
 
-// Normalize natural language dates to YYYY-MM-DD using Pacific timezone + 14 day map
 const normalizeDate = (input: string): string => {
-  // Get today in Pacific time correctly without timezone drift
   const now = new Date();
   const pacificDateStr = now.toLocaleDateString('en-US', {
     timeZone: 'America/Los_Angeles',
@@ -23,12 +20,10 @@ const normalizeDate = (input: string): string => {
     month: '2-digit',
     day: '2-digit'
   });
-  // pacificDateStr is like "03/18/2026"
   const [month, day, year] = pacificDateStr.split('/');
   const today = new Date(Number(year), Number(month) - 1, Number(day));
   today.setHours(0, 0, 0, 0);
 
-  // Pre-compute next 14 days
   const next14Days: { date: Date; dayName: string; index: number }[] = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
@@ -39,16 +34,10 @@ const normalizeDate = (input: string): string => {
 
   const lower = input.toLowerCase().trim();
 
-  // "today"
   if (lower === 'today') return next14Days[0].date.toISOString().split('T')[0];
-
-  // "tomorrow"
   if (lower === 'tomorrow') return next14Days[1].date.toISOString().split('T')[0];
-
-  // "next week"
   if (lower === 'next week') return next14Days[7].date.toISOString().split('T')[0];
 
-  // "next Monday", "next Tuesday" etc — find SECOND occurrence in 14 days
   const nextDayMatch = lower.match(/next (monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
   if (nextDayMatch) {
     const targetDay = nextDayMatch[1];
@@ -57,7 +46,6 @@ const normalizeDate = (input: string): string => {
     if (occurrences.length === 1) return occurrences[0].date.toISOString().split('T')[0];
   }
 
-  // "this Monday", "Monday", "Wednesday" etc — find FIRST occurrence in 14 days
   const dayMatch = lower.match(/(?:this )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
   if (dayMatch) {
     const targetDay = dayMatch[1];
@@ -65,15 +53,12 @@ const normalizeDate = (input: string): string => {
     if (occurrence) return occurrence.date.toISOString().split('T')[0];
   }
 
-  // Specific date like "2026-03-25" or "March 25" — parse directly
   const parsed = new Date(input);
   if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
 
-  // Fallback to tomorrow
   return next14Days[1].date.toISOString().split('T')[0];
 };
 
-// Tool handlers — actual logic lives here
 async function handleGetAvailableSlots(args: any) {
   try {
     const { modality, date, time_preference = 'any' } = args;
@@ -93,7 +78,6 @@ async function handleGetAvailableSlots(args: any) {
     );
 
     const bookedTimes = result.rows.map(r => new Date(r.start_time).toISOString());
-
     let available = allSlots.filter(slot => !bookedTimes.includes(new Date(slot).toISOString()));
 
     available = available.filter(slot => {
@@ -109,7 +93,6 @@ async function handleGetAvailableSlots(args: any) {
       return { content: [{ type: 'text', text: `NO_SLOTS_AVAILABLE for ${modality} on ${normalizedDate} (${time_preference}). Ask the patient for another date or time preference.` }] };
     }
 
-    // Return both human readable time AND full datetime so agent can pass correct start_time to book_appointment
     const formatted = available.map(slot => {
       const readable = new Date(slot).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       return `${readable} (${slot})`;
@@ -132,14 +115,14 @@ async function handleBookAppointment(args: any) {
 
     if (!patient) {
       const newPatient = await pool.query(
-        'INSERT INTO patients (phone, name, last_procedure, date_of_birth, insurance) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [phone, name, `${body_part} ${modality}`, date_of_birth || null, insurance || null]
+        'INSERT INTO patients (phone, name, last_procedure, date_of_birth, insurance, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [phone, name, `${body_part} ${modality}`, date_of_birth || null, insurance || null, email || null]
       );
       patient = newPatient.rows[0];
     } else {
       await pool.query(
-        'UPDATE patients SET last_procedure = $1, name = $2, insurance = $3 WHERE phone = $4',
-        [`${body_part} ${modality}`, name, insurance || patient.insurance, phone]
+        'UPDATE patients SET last_procedure = $1, name = $2, insurance = $3, date_of_birth = $4, email = $5 WHERE phone = $6',
+        [`${body_part} ${modality}`, name, insurance || patient.insurance, date_of_birth || patient.date_of_birth, email || patient.email, phone]
       );
     }
 
@@ -184,7 +167,6 @@ async function handleLogCallSummary(args: any) {
   }
 }
 
-// Export the setup function
 export async function setupMCP(app: express.Express) {
 
   app.post('/mcp', async (req, res) => {
