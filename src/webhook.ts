@@ -71,7 +71,7 @@ app.post('/api/webhook/dynamic-variables', async (req, res) => {
 
 // Serve dashboard
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+  res.sendFile(path.join(process.cwd(), 'src', 'dashboard.html'));
 });
 
 // Get all appointments
