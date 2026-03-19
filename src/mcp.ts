@@ -136,10 +136,27 @@ async function handleBookAppointment(args: any) {
   } catch (error: any) {
     console.error('book_appointment error:', error);
     if (error.code === '23505') {
+      if (error.constraint === 'appointments_modality_start_time_key') {
+        return {
+          content: [{
+            type: 'text',
+            text: 'BOOKING_ERROR_SLOT_TAKEN: That slot was just booked by someone else. Call get_available_slots again to find another available time for the patient.'
+          }]
+        };
+      }
+      if (error.constraint === 'appointments_patient_id_start_time_key') {
+        return {
+          content: [{
+            type: 'text',
+            text: 'BOOKING_ERROR_TIME_CONFLICT: This patient already has an appointment booked at that time. Let the patient know and ask them to choose a different time slot.'
+          }]
+        };
+      }
+      // fallback for any other unique constraint violation
       return {
         content: [{
           type: 'text',
-          text: 'BOOKING_ERROR_SLOT_TAKEN: That slot was just booked by someone else. Call get_available_slots again to find another available time for the patient.'
+          text: 'BOOKING_ERROR_SLOT_TAKEN: That slot is unavailable. Call get_available_slots again to find another available time for the patient.'
         }]
       };
     }
