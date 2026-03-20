@@ -85,7 +85,7 @@ src/
 | id | UUID PK | auto-generated |
 | phone | VARCHAR UNIQUE | used to identify returning callers |
 | name | VARCHAR | |
-| last_procedure | VARCHAR | e.g. "left knee MRI" — used for personalization |
+| last_procedure | VARCHAR |
 | date_of_birth | DATE | |
 | insurance | VARCHAR | |
 | email | VARCHAR | |
