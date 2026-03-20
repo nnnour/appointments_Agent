@@ -80,6 +80,10 @@ async function handleGetAvailableSlots(args: any) {
     const bookedTimes = result.rows.map(r => new Date(r.start_time).toISOString());
     let available = allSlots.filter(slot => !bookedTimes.includes(new Date(slot).toISOString()));
 
+    // Filter out past slots
+    const now = new Date();
+    available = available.filter(slot => new Date(slot) > now);
+
     available = available.filter(slot => {
       const hour = new Date(slot).getHours();
       if (time_preference === 'morning') return hour < 12;
@@ -109,6 +113,16 @@ async function handleGetAvailableSlots(args: any) {
 async function handleBookAppointment(args: any) {
   try {
     const { phone, name, modality, body_part, start_time, email, referral, date_of_birth, insurance } = args;
+
+    // Reject bookings in the past
+    if (new Date(start_time) <= new Date()) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'BOOKING_ERROR_PAST_TIME: That appointment time is already in the past. Call get_available_slots again and offer the patient only future times.'
+        }]
+      };
+    }
 
     let patientResult = await pool.query('SELECT * FROM patients WHERE phone = $1', [phone]);
     let patient = patientResult.rows[0];
@@ -152,7 +166,6 @@ async function handleBookAppointment(args: any) {
           }]
         };
       }
-      // fallback for any other unique constraint violation
       return {
         content: [{
           type: 'text',
