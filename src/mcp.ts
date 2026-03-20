@@ -1,14 +1,10 @@
 import express from 'express';
 import pg from 'pg';
 import dotenv from 'dotenv';
-import { DateTime } from 'luxon';
 
 dotenv.config();
 
 const { Pool } = pg;
-
-/** All scheduling / “today” / slot boundaries use Pacific time (works on Railway UTC). */
-const PACIFIC = 'America/Los_Angeles';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -16,130 +12,52 @@ const pool = new Pool({
 
 console.log('🏥 XMU Radiology MCP Server starting...');
 
-type PacificDayInfo = { iso: string; dayName: string; index: number };
-
-function getNext14PacificDays(): PacificDayInfo[] {
-  const start = DateTime.now().setZone(PACIFIC).startOf('day');
-  const out: PacificDayInfo[] = [];
-  for (let i = 0; i < 14; i++) {
-    const d = start.plus({ days: i });
-    out.push({
-      iso: d.toFormat('yyyy-MM-dd'),
-      dayName: d.toFormat('EEEE').toLowerCase(),
-      index: i
-    });
-  }
-  return out;
-}
-
 const normalizeDate = (input: string): string => {
-  const next14Days = getNext14PacificDays();
+  const now = new Date();
+  const pacificDateStr = now.toLocaleDateString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const [month, day, year] = pacificDateStr.split('/');
+  const today = new Date(Number(year), Number(month) - 1, Number(day));
+  today.setHours(0, 0, 0, 0);
+
+  const next14Days: { date: Date; dayName: string; index: number }[] = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    next14Days.push({ date: d, dayName, index: i });
+  }
 
   const lower = input.toLowerCase().trim();
 
-  if (lower === 'today') return next14Days[0]!.iso;
-  if (lower === 'tomorrow') return next14Days[1]!.iso;
-  if (lower === 'next week') return next14Days[7]!.iso;
+  if (lower === 'today') return next14Days[0].date.toISOString().split('T')[0];
+  if (lower === 'tomorrow') return next14Days[1].date.toISOString().split('T')[0];
+  if (lower === 'next week') return next14Days[7].date.toISOString().split('T')[0];
 
   const nextDayMatch = lower.match(/next (monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
   if (nextDayMatch) {
     const targetDay = nextDayMatch[1];
-    if (!targetDay) return next14Days[1]!.iso;
     const occurrences = next14Days.filter(d => d.dayName === targetDay && d.index > 0);
-    if (occurrences.length >= 2) return occurrences[1]!.iso;
-    if (occurrences.length === 1) return occurrences[0]!.iso;
+    if (occurrences.length >= 2) return occurrences[1].date.toISOString().split('T')[0];
+    if (occurrences.length === 1) return occurrences[0].date.toISOString().split('T')[0];
   }
 
   const dayMatch = lower.match(/(?:this )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
   if (dayMatch) {
     const targetDay = dayMatch[1];
-    if (!targetDay) return next14Days[1]!.iso;
     const occurrence = next14Days.find(d => d.dayName === targetDay && d.index > 0);
-    if (occurrence) return occurrence.iso;
+    if (occurrence) return occurrence.date.toISOString().split('T')[0];
   }
 
-  const isoTry = DateTime.fromISO(input.trim(), { zone: PACIFIC });
-  if (isoTry.isValid) return isoTry.toFormat('yyyy-MM-dd');
+  const parsed = new Date(input);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
 
-  const isoNoZone = DateTime.fromISO(input.trim());
-  if (isoNoZone.isValid) return isoNoZone.setZone(PACIFIC).toFormat('yyyy-MM-dd');
-
-  return next14Days[1]!.iso;
+  return next14Days[1].date.toISOString().split('T')[0];
 };
-
-/** Slot string from get_available_slots: "yyyy-MM-dd HH:mm:ss" in Pacific wall time. */
-function parsePacificSlot(slot: string): DateTime | null {
-  let dt = DateTime.fromFormat(slot, 'yyyy-MM-dd HH:mm:ss', { zone: PACIFIC });
-  if (dt.isValid) return dt;
-  dt = DateTime.fromFormat(slot, 'yyyy-MM-dd HH:mm', { zone: PACIFIC });
-  return dt.isValid ? dt : null;
-}
-
-/** Map DB value to the same Pacific wall-clock key as our slot strings. */
-function dbStartTimeToPacificSlotKey(value: unknown): string | null {
-  if (value == null) return null;
-  let dt: DateTime;
-  if (value instanceof Date) {
-    dt = DateTime.fromJSDate(value, { zone: 'utc' });
-  } else if (typeof value === 'string') {
-    dt = DateTime.fromISO(value, { setZone: true });
-    if (!dt.isValid) {
-      const local = DateTime.fromFormat(value, 'yyyy-MM-dd HH:mm:ss', { zone: PACIFIC });
-      if (local.isValid) return local.toFormat('yyyy-MM-dd HH:mm:ss');
-      return null;
-    }
-  } else {
-    return null;
-  }
-  if (!dt.isValid) return null;
-  return dt.setZone(PACIFIC).toFormat('yyyy-MM-dd HH:mm:ss');
-}
-
-/** Parse book_appointment start_time: Pacific "yyyy-MM-dd HH:mm:ss" or ISO instant (e.g. ...Z). */
-function parseAppointmentStartTime(raw: string): DateTime | null {
-  const s = raw.trim();
-  if (!s) return null;
-
-  let dt = DateTime.fromFormat(s, 'yyyy-MM-dd HH:mm:ss', { zone: PACIFIC });
-  if (dt.isValid) return dt;
-
-  dt = DateTime.fromFormat(s, 'yyyy-MM-dd HH:mm', { zone: PACIFIC });
-  if (dt.isValid) return dt;
-
-  dt = DateTime.fromISO(s, { setZone: true });
-  if (dt.isValid) return dt;
-
-  const t = s.replace(' ', 'T');
-  dt = DateTime.fromISO(t, { zone: PACIFIC });
-  return dt.isValid ? dt : null;
-}
-
-/**
- * Voice agents often see {{telnyx_current_time}} in UTC. In Pacific evening, UTC may already be the
- * *next calendar day*, so the model wrongly says "today" for slots that are actually "tomorrow" in
- * San Francisco. This cue is the source of truth for patient-facing "today" / "tomorrow" wording.
- */
-function patientFacingDayCue(normalizedDate: string): string {
-  const todayPacific = DateTime.now().setZone(PACIFIC).startOf('day');
-  const targetPacific = DateTime.fromFormat(normalizedDate, 'yyyy-MM-dd', { zone: PACIFIC }).startOf('day');
-  const human = targetPacific.toFormat('EEEE, MMMM d, yyyy');
-
-  let relative: string;
-  if (targetPacific.hasSame(todayPacific, 'day')) relative = 'today';
-  else if (targetPacific.hasSame(todayPacific.plus({ days: 1 }), 'day')) relative = 'tomorrow';
-  else if (targetPacific.hasSame(todayPacific.minus({ days: 1 }), 'day')) relative = 'yesterday';
-  else if (targetPacific < todayPacific) relative = 'that day (already past in Pacific — offer a future date)';
-  else relative = targetPacific.toFormat('EEEE');
-
-  const say =
-    relative === 'today' || relative === 'tomorrow' || relative === 'yesterday'
-      ? `${relative} (${human})`
-      : relative.startsWith('that day')
-        ? `${human} — ${relative}`
-        : `${relative}, ${human}`;
-
-  return `PATIENT_DATE_CUE (Pacific / clinic — ignore UTC wall clocks like telnyx_current_time for "today" or "tomorrow"): Say the appointment is ${say}. Example: "Our earliest X-ray is tomorrow, Friday March 20, at 12:00 PM."`;
-}
 
 async function handleGetAvailableSlots(args: any) {
   try {
@@ -154,36 +72,16 @@ async function handleGetAvailableSlots(args: any) {
       }
     }
 
-    const dayStartPacific = DateTime.fromFormat(normalizedDate, 'yyyy-MM-dd', { zone: PACIFIC }).startOf('day');
-    const dayEndPacific = dayStartPacific.plus({ days: 1 });
-
     const result = await pool.query(
-      `SELECT start_time FROM appointments
-       WHERE modality = $1
-         AND start_time >= $2
-         AND start_time < $3`,
-      [modality, dayStartPacific.toUTC().toJSDate(), dayEndPacific.toUTC().toJSDate()]
+      `SELECT start_time FROM appointments WHERE modality = $1 AND DATE(start_time) = $2`,
+      [modality, normalizedDate]
     );
 
-    const bookedKeys = new Set(
-      result.rows
-        .map(r => dbStartTimeToPacificSlotKey(r.start_time))
-        .filter((k): k is string => Boolean(k))
-    );
-
-    const now = DateTime.now();
-
-    let available = allSlots.filter(slot => {
-      const slotDt = parsePacificSlot(slot);
-      if (!slotDt) return false;
-      if (slotDt <= now) return false;
-      return !bookedKeys.has(slot);
-    });
+    const bookedTimes = result.rows.map(r => new Date(r.start_time).toISOString());
+    let available = allSlots.filter(slot => !bookedTimes.includes(new Date(slot).toISOString()));
 
     available = available.filter(slot => {
-      const slotDt = parsePacificSlot(slot);
-      if (!slotDt) return false;
-      const hour = slotDt.hour;
+      const hour = new Date(slot).getHours();
       if (time_preference === 'morning') return hour < 12;
       if (time_preference === 'afternoon') return hour >= 12;
       return true;
@@ -196,20 +94,11 @@ async function handleGetAvailableSlots(args: any) {
     }
 
     const formatted = available.map(slot => {
-      const slotDt = parsePacificSlot(slot);
-      const readable = slotDt
-        ? slotDt.toFormat('h:mm a')
-        : slot;
+      const readable = new Date(slot).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       return `${readable} (${slot})`;
     });
 
-    const dayCue = patientFacingDayCue(normalizedDate);
-    return {
-      content: [{
-        type: 'text',
-        text: `Available ${modality} slots on ${normalizedDate} (${PACIFIC})${time_preference !== 'any' ? ` (${time_preference})` : ''}. Past times on that day are already excluded. Times: ${formatted.join(', ')}\n\n${dayCue}`
-      }]
-    };
+    return { content: [{ type: 'text', text: `Available ${modality} slots on ${normalizedDate}${time_preference !== 'any' ? ` (${time_preference})` : ''}: ${formatted.join(', ')}` }] };
 
   } catch (error) {
     console.error('get_available_slots error:', error);
@@ -220,27 +109,6 @@ async function handleGetAvailableSlots(args: any) {
 async function handleBookAppointment(args: any) {
   try {
     const { phone, name, modality, body_part, start_time, email, referral, date_of_birth, insurance } = args;
-
-    const startDt = parseAppointmentStartTime(String(start_time ?? ''));
-    if (!startDt) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'BOOKING_ERROR_INVALID_TIME: Could not parse start_time. Use the exact datetime from get_available_slots (Pacific), e.g. 2026-03-18 14:00:00, or a valid ISO timestamp.'
-        }]
-      };
-    }
-
-    if (startDt <= DateTime.now()) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'BOOKING_ERROR_PAST_TIME: That appointment time is already in the past. Apologize briefly, call get_available_slots again for the same day (or another day), and offer the patient only times from that response.'
-        }]
-      };
-    }
-
-    const insertInstant = startDt.toUTC().toJSDate();
 
     let patientResult = await pool.query('SELECT * FROM patients WHERE phone = $1', [phone]);
     let patient = patientResult.rows[0];
@@ -260,11 +128,10 @@ async function handleBookAppointment(args: any) {
 
     await pool.query(
       `INSERT INTO appointments (patient_id, modality, body_part, start_time, email, referral) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [patient.id, modality, body_part, insertInstant, email, referral]
+      [patient.id, modality, body_part, start_time, email, referral]
     );
 
-    const confirmPacific = startDt.setZone(PACIFIC).toFormat('yyyy-MM-dd h:mm a');
-    return { content: [{ type: 'text', text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${confirmPacific} (${PACIFIC}).${email ? ` Confirmation will be sent to ${email}.` : ''}` }] };
+    return { content: [{ type: 'text', text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${start_time}.${email ? ` Confirmation will be sent to ${email}.` : ''}` }] };
 
   } catch (error: any) {
     console.error('book_appointment error:', error);
@@ -346,7 +213,7 @@ export async function setupMCP(app: express.Express) {
           tools: [
             {
               name: 'get_available_slots',
-              description: 'Use this to check available appointment slots in America/Los_Angeles (Pacific). Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day. Times that are already in the past on the requested day are never returned. The response includes PATIENT_DATE_CUE: you MUST follow it for words like "today" vs "tomorrow" — do not infer those from {{telnyx_current_time}} if it is UTC. Each slot has a human-readable time and the exact datetime in parentheses — always use the exact datetime in parentheses when calling book_appointment.',
+              description: 'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day. Each slot is returned with both a human readable time and the exact datetime in parentheses — always use the exact datetime in parentheses when calling book_appointment.',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -359,7 +226,7 @@ export async function setupMCP(app: express.Express) {
             },
             {
               name: 'book_appointment',
-              description: 'Use this to book an appointment once the patient has confirmed their preferred date, time and scan type. Only call this after confirming all details with the patient. Use the exact datetime from get_available_slots response for start_time (Pacific wall time, e.g. 2026-03-18 14:00:00). Bookings in the past are rejected — if that happens, call get_available_slots again and pick a future slot.',
+              description: 'Use this to book an appointment once the patient has confirmed their preferred date, time and scan type. Only call this after confirming all details with the patient. Use the exact datetime from get_available_slots response for start_time.',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -367,7 +234,7 @@ export async function setupMCP(app: express.Express) {
                   name: { type: 'string', description: 'Patient full name' },
                   modality: { type: 'string', enum: ['X-ray', 'MRI', 'Ultrasound'] },
                   body_part: { type: 'string', description: 'Body part e.g. Knee, Shoulder, Spine' },
-                  start_time: { type: 'string', description: 'Exact appointment start time from get_available_slots (Pacific), e.g. 2026-03-18 14:00:00, or ISO-8601 instant' },
+                  start_time: { type: 'string', description: 'Exact appointment start time from get_available_slots e.g. 2026-03-18 14:00:00' },
                   email: { type: 'string', description: 'Optional patient email for confirmation' },
                   referral: { type: 'boolean', description: 'Whether patient has a referral' },
                   date_of_birth: { type: 'string', description: 'Optional patient date of birth e.g. 2001-05-17' },
