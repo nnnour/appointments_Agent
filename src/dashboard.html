@@ -88,7 +88,7 @@
     .calendar-section {
       padding: 28px 32px;
       border-right: 1px solid var(--border);
-      min-width: 0; /* critical — prevents grid blowout */
+      min-width: 0;
       overflow: hidden;
     }
 
@@ -249,6 +249,11 @@
   let selectedDate = '';
   let allAppointments = [];
 
+  // Get today's date as YYYY-MM-DD using browser local time — used everywhere for consistency
+  function getLocalToday() {
+    return new Date().toLocaleDateString('en-CA'); // always returns YYYY-MM-DD
+  }
+
   function updateClock() {
     const now = new Date();
     document.getElementById('currentDateTime').textContent =
@@ -261,21 +266,31 @@
   function getAllDates() {
     const days = new Set();
     const today = new Date();
+
+    // Add next 14 days using local date (not UTC) to avoid off-by-one issues
     for (let i = 0; i < 14; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
-      days.add(d.toISOString().split('T')[0]);
+      days.add(d.toLocaleDateString('en-CA')); // YYYY-MM-DD in local time
     }
+
+    // Add any dates that have actual bookings (even beyond 14 days)
     allAppointments.forEach(a => {
       days.add(a.start_time.split('T')[0]);
     });
+
     return [...days].sort();
   }
 
   function formatDateTab(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    // Parse as local midnight to avoid timezone shifting
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+
+    const todayStr = getLocalToday();
+    const [ty, tm, td] = todayStr.split('-').map(Number);
+    const today = new Date(ty, tm - 1, td);
+
     const diff = Math.round((d - today) / 86400000);
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Tomorrow';
@@ -304,15 +319,12 @@
   function formatWallClockPacific(timestamp) {
     const parts = parseWallTimeParts(timestamp);
     if (!parts) return 'Invalid time';
-
     const dateRef = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
     const dateStr = dateRef.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     const hour12 = ((parts.hour + 11) % 12) + 1;
     const minute = String(parts.minute).padStart(2, '0');
     const ampm = parts.hour >= 12 ? 'PM' : 'AM';
-    const timeStr = `${hour12}:${minute} ${ampm}`;
-
-    return `${dateStr} ${timeStr}`;
+    return `${dateStr} ${hour12}:${minute} ${ampm}`;
   }
 
   function renderDateTabs(days) {
@@ -425,8 +437,8 @@
     }
   }
 
-  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-  selectedDate = todayStr;
+  // Init — use browser local time consistently everywhere
+  selectedDate = getLocalToday();
   fetchData();
 
   setInterval(fetchData, 15000);
