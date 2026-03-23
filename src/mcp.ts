@@ -92,7 +92,7 @@ async function handleGetAvailableSlots(args: any) {
       patientBookedTimes = patientResult.rows.map(r => new Date(r.start_time).toISOString());
     }
 
-    // Combine — slot is unavailable if machine is booked OR patient is already booked then
+    // Combine — slot is unavailable if machine is booked OR patient already has something then
     const allBookedTimes = new Set([...modalityBookedTimes, ...patientBookedTimes]);
     let available = allSlots.filter(slot => !allBookedTimes.has(new Date(slot).toISOString()));
 
@@ -144,6 +144,28 @@ async function handleBookAppointment(args: any) {
     let patientResult = await pool.query('SELECT * FROM patients WHERE phone = $1', [phone]);
     let patient = patientResult.rows[0];
 
+    // If patient exists, check if they already have this exact appointment booked
+    // This handles the case where the agent calls book_appointment twice for the same slot
+    if (patient) {
+      const existingBooking = await pool.query(
+        `SELECT a.id FROM appointments a
+         WHERE a.patient_id = $1
+         AND a.modality = $2
+         AND a.start_time::text LIKE $3`,
+        [patient.id, modality, start_time.substring(0, 16) + '%']
+      );
+
+      if (existingBooking.rows.length > 0) {
+        // This patient already has this exact booking — treat as success
+        return {
+          content: [{
+            type: 'text',
+            text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${start_time}. Appointment is confirmed.`
+          }]
+        };
+      }
+    }
+
     if (!patient) {
       const newPatient = await pool.query(
         'INSERT INTO patients (phone, name, last_procedure, date_of_birth, insurance, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
@@ -168,28 +190,6 @@ async function handleBookAppointment(args: any) {
     console.error('book_appointment error:', error);
     if (error.code === '23505') {
       if (error.constraint === 'appointments_modality_start_time_key') {
-        // Check if this slot was actually just booked by THIS patient (duplicate tool call)
-        try {
-          const existing = await pool.query(
-            `SELECT a.id FROM appointments a
-             JOIN patients p ON a.patient_id = p.id
-             WHERE p.phone = $1 AND a.modality = $2 AND a.start_time = $3`,
-            [phone, modality, start_time]
-          );
-          if (existing.rows.length > 0) {
-            // This patient's booking — treat as success not error
-            return {
-              content: [{
-                type: 'text',
-                text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${start_time}. Appointment is confirmed.`
-              }]
-            };
-          }
-        } catch (checkError) {
-          console.error('Error checking existing booking:', checkError);
-        }
-
-        // Genuinely taken by someone else
         return {
           content: [{
             type: 'text',
@@ -197,7 +197,6 @@ async function handleBookAppointment(args: any) {
           }]
         };
       }
-
       if (error.constraint === 'appointments_patient_id_start_time_key') {
         return {
           content: [{
@@ -206,8 +205,6 @@ async function handleBookAppointment(args: any) {
           }]
         };
       }
-
-      // Fallback for any other unique constraint
       return {
         content: [{
           type: 'text',
