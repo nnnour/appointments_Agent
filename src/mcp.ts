@@ -61,9 +61,10 @@ const normalizeDate = (input: string): string => {
 
 async function handleGetAvailableSlots(args: any) {
   try {
-    const { modality, date, time_preference = 'any' } = args;
+    const { modality, date, time_preference = 'any', phone } = args;
     const normalizedDate = normalizeDate(date);
 
+    // Generate all possible 30-min slots 9am-5pm
     const allSlots = [];
     for (let hour = 9; hour < 17; hour++) {
       for (let min of [0, 30]) {
@@ -72,18 +73,34 @@ async function handleGetAvailableSlots(args: any) {
       }
     }
 
-    const result = await pool.query(
+    // Query 1: slots booked for this modality (machine conflict)
+    const modalityResult = await pool.query(
       `SELECT start_time FROM appointments WHERE modality = $1 AND DATE(start_time) = $2`,
       [modality, normalizedDate]
     );
+    const modalityBookedTimes = modalityResult.rows.map(r => new Date(r.start_time).toISOString());
 
-    const bookedTimes = result.rows.map(r => new Date(r.start_time).toISOString());
-    let available = allSlots.filter(slot => !bookedTimes.includes(new Date(slot).toISOString()));
+    // Query 2: slots booked by this patient on this day (patient time conflict)
+    let patientBookedTimes: string[] = [];
+    if (phone) {
+      const patientResult = await pool.query(
+        `SELECT a.start_time FROM appointments a
+         JOIN patients p ON a.patient_id = p.id
+         WHERE p.phone = $1 AND DATE(a.start_time) = $2`,
+        [phone, normalizedDate]
+      );
+      patientBookedTimes = patientResult.rows.map(r => new Date(r.start_time).toISOString());
+    }
+
+    // Combine — slot is unavailable if machine is booked OR patient is already booked then
+    const allBookedTimes = new Set([...modalityBookedTimes, ...patientBookedTimes]);
+    let available = allSlots.filter(slot => !allBookedTimes.has(new Date(slot).toISOString()));
 
     // Filter out past slots
     const now = new Date();
     available = available.filter(slot => new Date(slot) > now);
 
+    // Apply time preference
     available = available.filter(slot => {
       const hour = new Date(slot).getHours();
       if (time_preference === 'morning') return hour < 12;
@@ -151,6 +168,28 @@ async function handleBookAppointment(args: any) {
     console.error('book_appointment error:', error);
     if (error.code === '23505') {
       if (error.constraint === 'appointments_modality_start_time_key') {
+        // Check if this slot was actually just booked by THIS patient (duplicate tool call)
+        try {
+          const existing = await pool.query(
+            `SELECT a.id FROM appointments a
+             JOIN patients p ON a.patient_id = p.id
+             WHERE p.phone = $1 AND a.modality = $2 AND a.start_time = $3`,
+            [phone, modality, start_time]
+          );
+          if (existing.rows.length > 0) {
+            // This patient's booking — treat as success not error
+            return {
+              content: [{
+                type: 'text',
+                text: `BOOKING_CONFIRMED: ${modality} for ${body_part} on ${start_time}. Appointment is confirmed.`
+              }]
+            };
+          }
+        } catch (checkError) {
+          console.error('Error checking existing booking:', checkError);
+        }
+
+        // Genuinely taken by someone else
         return {
           content: [{
             type: 'text',
@@ -158,6 +197,7 @@ async function handleBookAppointment(args: any) {
           }]
         };
       }
+
       if (error.constraint === 'appointments_patient_id_start_time_key') {
         return {
           content: [{
@@ -166,6 +206,8 @@ async function handleBookAppointment(args: any) {
           }]
         };
       }
+
+      // Fallback for any other unique constraint
       return {
         content: [{
           type: 'text',
@@ -226,13 +268,14 @@ export async function setupMCP(app: express.Express) {
           tools: [
             {
               name: 'get_available_slots',
-              description: 'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day. Each slot is returned with both a human readable time and the exact datetime in parentheses — always use the exact datetime in parentheses when calling book_appointment.',
+              description: 'Use this to check available appointment slots. Call this whenever the patient mentions a date, day, or time preference. Keep calling this with updated parameters as the patient refines their preference. If no date is mentioned, use tomorrow as default. time_preference is optional: "morning" = 9am-12pm, "afternoon" = 12pm-5pm, "any" = all day. If you know the patient phone number, pass it as phone to also filter out times the patient already has booked. Each slot is returned with both a human readable time and the exact datetime in parentheses — always use the exact datetime in parentheses when calling book_appointment.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   modality: { type: 'string', enum: ['X-ray', 'MRI', 'Ultrasound'] },
                   date: { type: 'string', description: 'Date in YYYY-MM-DD format or natural language like "tomorrow", "next Monday", "Wednesday"' },
-                  time_preference: { type: 'string', enum: ['morning', 'afternoon', 'any'], default: 'any' }
+                  time_preference: { type: 'string', enum: ['morning', 'afternoon', 'any'], default: 'any' },
+                  phone: { type: 'string', description: 'Optional — patient phone number. If provided, times already booked by this patient are excluded from results.' }
                 },
                 required: ['modality', 'date']
               }
